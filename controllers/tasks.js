@@ -1,8 +1,10 @@
 const Task = require('../models/Task');
 const Employee = require('../models/Employee');
 const Project = require('../models/Project');
+const ErrorResponse = require('../utils/errorResponse');
+const asyncHandler = require('../middleware/async');
 
-exports.getAllTasks = async (req, res) => {
+exports.getAllTasks = asyncHandler(async (req, res, next) => {
   const tasks = await Task.findAll({
     include: [
       { model: Employee, as: 'employee' },
@@ -14,41 +16,47 @@ exports.getAllTasks = async (req, res) => {
     success: true,
     data: tasks
   });
-}
+});
 
-exports.createTask = async (req, res) => {
+exports.createTask = asyncHandler(async (req, res, next) => {
   const newTask = await Task.create(req.body);
 
   res.status(201).json({ success: true, data: newTask });
-}
+});
 
-exports.getSingleTask = async (req, res) => {
+exports.getSingleTask = asyncHandler(async (req, res) => {
   const task = await Task.findByPk(req.params.id)
 
   if (!task) {
-    res.status(400).json({ success: false, message: "No Task with given ID" });
+    return next(
+      new ErrorResponse('No Task with given ID', 400)
+    );
   }
 
   res.status(200).json({ success: true, data: task });
-}
+});
 
-exports.removeTask = async (req, res) => {
+exports.removeTask = asyncHandler(async (req, res, next) => {
   const task = await Task.findByPk(req.params.id);
 
   if (!task) {
-    res.status(400).json({ success: false, message: "No Task with given ID" });
+    return next(
+      new ErrorResponse('No Task with given ID', 400)
+    );
   }
 
   await task.destroy();
 
   res.status(200).json({ success: true, data: task });
-}
+});
 
-exports.updateTask = async (req, res) => {
+exports.updateTask = asyncHandler(async (req, res, next) => {
   const task = await Task.findByPk(req.params.id);
 
   if (!task) {
-    res.status(400).json({ success: false, message: "No Task with given ID" });
+    return next(
+      new ErrorResponse('No Task with given ID', 400)
+    );
   }
 
   let [rowsUpdated, updatedTask] = await Task.update(req.body, {
@@ -60,4 +68,4 @@ exports.updateTask = async (req, res) => {
     data: updatedTask,
     affectedRows: rowsUpdated
   });
-}
+});

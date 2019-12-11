@@ -1,4 +1,5 @@
 const express = require('express');
+const errorHandler = require('./middleware/error');
 
 // PORT
 const PORT = process.env.PORT || 5000;
@@ -32,5 +33,8 @@ app.get('/', (req, res) => res.send('INDEX'));
 app.use('/employees', employees);
 app.use('/tasks', tasks);
 app.use('/projects', projects);
+
+// error handler middleware
+app.use(errorHandler);
 
 app.listen(PORT, console.log(`Server started on port ${PORT}`));

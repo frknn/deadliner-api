@@ -1,7 +1,9 @@
 const Project = require('../models/Project');
 const Task = require('../models/Task');
+const ErrorResponse = require('../utils/errorResponse');
+const asyncHandler = require('../middleware/async');
 
-exports.getAllProjects = async (req, res) => {
+exports.getAllProjects = asyncHandler(async (req, res, next) => {
   const projects = await Project.findAll({
     include: [{
       model: Task,
@@ -13,41 +15,47 @@ exports.getAllProjects = async (req, res) => {
     success: true,
     data: projects
   });
-}
+});
 
-exports.createProject = async (req, res) => {
+exports.createProject = asyncHandler(async (req, res, next) => {
   const newProject = await Project.create(req.body);
 
   res.status(201).json({ success: true, data: newProject });
-}
+});
 
-exports.getSingleProject = async (req, res) => {
+exports.getSingleProject = asyncHandler(async (req, res, next) => {
   const project = await Project.findByPk(req.params.id)
 
   if (!project) {
-    res.status(400).json({ success: false, message: "No Project with given ID" });
+    return next(
+      new ErrorResponse('No Project with given ID', 404)
+    );
   }
 
   res.status(200).json({ success: true, data: project });
-}
+});
 
-exports.removeProject = async (req, res) => {
+exports.removeProject = asyncHandler(async (req, res, next) => {
   const project = await Project.findByPk(req.params.id);
 
   if (!project) {
-    res.status(400).json({ success: false, message: "No Project with given ID" });
+    return next(
+      new ErrorResponse('No Project with given ID', 400)
+    );
   }
 
   await project.destroy();
 
   res.status(200).json({ success: true, data: project });
-}
+});
 
-exports.updateProject = async (req, res) => {
+exports.updateProject = asyncHandler(async (req, res, next) => {
   const project = await Project.findByPk(req.params.id);
 
   if (!project) {
-    res.status(400).json({ success: false, message: "No Project with given ID" });
+    return next(
+      new ErrorResponse('No Project with given ID', 400)
+    );
   }
 
   let [rowsUpdated, updatedProject] = await Project.update(req.body, {
@@ -59,4 +67,4 @@ exports.updateProject = async (req, res) => {
     data: updatedProject,
     affectedRows: rowsUpdated
   });
-}
+});
