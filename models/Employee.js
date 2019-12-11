@@ -1,6 +1,6 @@
 const Sequelize = require('sequelize');
 const db = require('../config/database');
-//const Task = require('./Task');
+const Task = require('./Task');
 
 const Employee = db.define('employee', {
   first_name: {
@@ -14,7 +14,8 @@ const Employee = db.define('employee', {
   }
 });
 
-//Employee.hasMany(Sequelize.);
+Employee.hasMany(Task);
+Task.belongsTo(Employee);
 
 
 module.exports = Employee;

@@ -1,4 +1,5 @@
 const Project = require('../models/Project');
+const Task = require('../models/Task');
 
 exports.getAllProjects = async (req, res) => {
   const projects = await Project.findAll({

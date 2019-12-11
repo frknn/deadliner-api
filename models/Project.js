@@ -1,6 +1,6 @@
 const Sequelize = require('sequelize');
 const db = require('../config/database');
-//const Task = require('./Task');
+const Task = require('./Task');
 
 const Project = db.define('project', {
   name: {
@@ -17,7 +17,7 @@ const Project = db.define('project', {
   }
 });
 
-//Project.hasMany(Task);
-
+Project.hasMany(Task);
+Task.belongsTo(Project);
 
 module.exports = Project;
