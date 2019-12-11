@@ -1,5 +1,6 @@
 const Employee = require('../models/Employee');
 const Task = require('../models/Task');
+const ErrorResponse = require('../utils/errorResponse');
 
 exports.getAllEmployees = async (req, res) => {
   const employees = await Employee.findAll({
@@ -22,13 +23,21 @@ exports.createEmployee = async (req, res) => {
 }
 
 exports.getSingleEmployee = async (req, res) => {
-  const employee = await Employee.findByPk(req.params.id)
 
-  if (!employee) {
-    res.status(400).json({ success: false, message: "No Employee with given ID" });
+  try {
+    const employee = await Employee.findByPk(req.params.id)
+
+    if (!employee) {
+      throw new ErrorResponse('No employee with given ID', 404);
+    }
+
+    res.status(200).json({ success: true, data: employee });
+  } catch (err) {
+    res.status(err.statusCode).json({
+      success: false, error: err.message
+    })
   }
 
-  res.status(200).json({ success: true, data: employee });
 }
 
 exports.removeEmployee = async (req, res) => {
