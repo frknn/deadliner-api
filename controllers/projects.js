@@ -2,18 +2,35 @@ const Project = require('../models/Project');
 const Task = require('../models/Task');
 const ErrorResponse = require('../utils/errorResponse');
 const asyncHandler = require('../middleware/async');
+const Employee = require('../models/Employee');
 
 exports.getAllProjects = asyncHandler(async (req, res, next) => {
   const projects = await Project.findAll({
     include: [{
       model: Task,
-      attributes: ['name', 'status', 'deadline', 'employeeId']
+      attributes: ['name', 'status', 'deadline'],
+      include: [{
+        model: Employee,
+        attributes: ['first_name', 'last_name']
+      }]
     }]
   });
 
+  /* tranforming the returning projects object
+     to its json format which includes only related object data,
+     not metadata 
+  */
+  let projectsData = JSON.parse(JSON.stringify(projects))
+
+  /* picked the employees from projects's tasks array and include
+     them into a employees array to provide a
+     more understandable and useful json data
+  */
+  projectsData.forEach(project => project.employees = project.tasks.map(task => task.employee))
+
   res.status(200).json({
     success: true,
-    data: projects
+    data: projectsData
   });
 });
 

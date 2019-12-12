@@ -1,5 +1,7 @@
 const Employee = require('../models/Employee');
 const Task = require('../models/Task');
+const Project = require('../models/Project');
+const Sequelize = require('sequelize');
 const ErrorResponse = require('../utils/errorResponse');
 const asyncHandler = require('../middleware/async');
 
@@ -7,13 +9,29 @@ exports.getAllEmployees = asyncHandler(async (req, res, next) => {
   const employees = await Employee.findAll({
     include: [{
       model: Task,
-      attributes: ['name', 'status', 'deadline', 'projectId']
+      attributes: ['name', 'status', 'deadline'],
+      include: [{
+        model: Project,
+        attributes: ['name', 'status', 'deadline', 'description']
+      }]
     }]
   });
 
+  /* tranforming the returning employees object
+     to its json format which includes only related object data
+     not metadata 
+  */
+  let employeesData = JSON.parse(JSON.stringify(employees))
+
+  /* picked the projects from employee's tasks array and include
+     them into a projects array to provide a
+     more understandable and useful json data
+  */
+ employeesData.forEach(employee => employee.projects = employee.tasks.map(task => task.project))
+
   res.status(200).json({
     success: true,
-    data: employees
+    data: employeesData
   });
 });
 
