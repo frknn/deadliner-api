@@ -5,7 +5,8 @@ const {
   createProject, 
   getSingleProject,
   removeProject,
-  updateProject } = require('../controllers/projects')
+  updateProject,
+  getProjectEmployees } = require('../controllers/projects')
 
 router.route('/')
   .get(getAllProjects)
@@ -15,5 +16,8 @@ router.route('/:id')
   .get(getSingleProject)
   .delete(removeProject)
   .put(updateProject)
+
+router.route('/:id/employees')
+  .get(getProjectEmployees)
 
 module.exports = router;

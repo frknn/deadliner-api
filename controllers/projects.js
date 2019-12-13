@@ -5,13 +5,14 @@ const asyncHandler = require('../middleware/async');
 const Employee = require('../models/Employee');
 
 exports.getAllProjects = asyncHandler(async (req, res, next) => {
+
   const projects = await Project.findAll({
     include: [{
       model: Task,
       attributes: ['name', 'status', 'deadline'],
       include: [{
         model: Employee,
-        attributes: ['first_name', 'last_name']
+        attributes: ['first_name', 'last_name', 'job']
       }]
     }]
   });
@@ -34,6 +35,34 @@ exports.getAllProjects = asyncHandler(async (req, res, next) => {
   });
 });
 
+exports.getProjectEmployees = asyncHandler(async (req, res, next) => {
+  const project = await Project.findByPk(req.params.id, {
+    include: [{
+      model: Task,
+      attributes: ['name', 'status', 'deadline'],
+      include: [{
+        model: Employee,
+        attributes: ['first_name', 'last_name', 'job']
+      }]
+    }]
+  });
+
+  if (!project) {
+    return next(
+      new ErrorResponse('No Project with given ID', 400)
+    );
+  }
+
+  let projectData = JSON.parse(JSON.stringify(project))
+
+  let employees = projectData.tasks.map(task => task.employee)
+
+  res.status(200).json({
+    success: true,
+    data: employees
+  });
+});
+
 exports.createProject = asyncHandler(async (req, res, next) => {
   const newProject = await Project.create(req.body);
 
@@ -41,7 +70,16 @@ exports.createProject = asyncHandler(async (req, res, next) => {
 });
 
 exports.getSingleProject = asyncHandler(async (req, res, next) => {
-  const project = await Project.findByPk(req.params.id)
+  const project = await Project.findByPk(req.params.id, {
+    include: [{
+      model: Task,
+      attributes: ['name', 'status', 'deadline'],
+      include: [{
+        model: Employee,
+        attributes: ['first_name', 'last_name', 'job']
+      }]
+    }]
+  })
 
   if (!project) {
     return next(
@@ -49,7 +87,11 @@ exports.getSingleProject = asyncHandler(async (req, res, next) => {
     );
   }
 
-  res.status(200).json({ success: true, data: project });
+  let projectData = JSON.parse(JSON.stringify(project))
+
+  projectData.employees = projectData.tasks.map(task => task.employee)
+
+  res.status(200).json({ success: true, data: projectData });
 });
 
 exports.removeProject = asyncHandler(async (req, res, next) => {

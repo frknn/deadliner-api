@@ -1,7 +1,6 @@
 const Employee = require('../models/Employee');
 const Task = require('../models/Task');
 const Project = require('../models/Project');
-const Sequelize = require('sequelize');
 const ErrorResponse = require('../utils/errorResponse');
 const asyncHandler = require('../middleware/async');
 
@@ -27,12 +26,41 @@ exports.getAllEmployees = asyncHandler(async (req, res, next) => {
      them into a projects array to provide a
      more understandable and useful json data
   */
- employeesData.forEach(employee => employee.projects = employee.tasks.map(task => task.project))
+  employeesData.forEach(employee => employee.projects = employee.tasks.map(task => task.project))
 
   res.status(200).json({
     success: true,
     data: employeesData
   });
+});
+
+exports.getEmployeeProjects = asyncHandler(async (req, res, next) => {
+  const employee = await Employee.findByPk(req.params.id, {
+    include: [{
+      model: Task,
+      attributes: ['name', 'status', 'deadline'],
+      include: [{
+        model: Project,
+        attributes: ['name', 'status', 'deadline', 'description']
+      }]
+    }]
+  });
+
+  if (!employee) {
+    return next(
+      new ErrorResponse('No Employee with given ID', 400)
+    );
+  }
+
+  let employeeData = JSON.parse(JSON.stringify(employee))
+
+  let projects = employeeData.tasks.map(task => task.project)
+
+  res.status(200).json({
+    success: true,
+    data: projects
+  });
+
 });
 
 exports.createEmployee = asyncHandler(async (req, res, next) => {
@@ -42,7 +70,16 @@ exports.createEmployee = asyncHandler(async (req, res, next) => {
 });
 
 exports.getSingleEmployee = asyncHandler(async (req, res, next) => {
-  const employee = await Employee.findByPk(req.params.id)
+  const employee = await Employee.findByPk(req.params.id, {
+    include: [{
+      model: Task,
+      attributes: ['name', 'status', 'deadline'],
+      include: [{
+        model: Project,
+        attributes: ['name', 'status', 'deadline', 'description']
+      }]
+    }]
+  })
 
   if (!employee) {
     return next(
@@ -50,7 +87,11 @@ exports.getSingleEmployee = asyncHandler(async (req, res, next) => {
     );
   }
 
-  res.status(200).json({ success: true, data: employee });
+  let employeeData = JSON.parse(JSON.stringify(employee))
+
+  employeeData.projects = employeeData.tasks.map(task => task.project)
+
+  res.status(200).json({ success: true, data: employeeData });
 });
 
 exports.removeEmployee = asyncHandler(async (req, res, next) => {
