@@ -1,6 +1,8 @@
 const Sequelize = require('sequelize');
 const db = require('../config/database');
 const Task = require('./Task');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
 const Employee = db.define('employee', {
   first_name: {
@@ -11,8 +13,35 @@ const Employee = db.define('employee', {
   },
   job: {
     type: Sequelize.STRING(50)
+  },
+  role: {
+    type: Sequelize.ENUM,
+    values: ['Project Manager', 'Project Developer']
+  },
+  email: {
+    type: Sequelize.STRING(60),
+    unique: true,
+    allowNull: false,
+    validate: {
+      isEmail: true
+    }
+  },
+  password: {
+    type: Sequelize.TEXT,
+    allowNull: false,
   }
 });
+
+Employee.addHook('beforeSave', async function (employee, options) {
+  const salt = await bcrypt.genSalt(10);
+  employee.password = await bcrypt.hash(employee.password, salt);
+})
+
+Employee.prototype.getSignedJwtToken = function () {
+  return jwt.sign({ id: this.id }, 'asdasd', {
+    expiresIn: '30d'
+  })
+}
 
 /* 
   to fetch the data for both of owner and belonging,
@@ -21,6 +50,5 @@ const Employee = db.define('employee', {
 */
 Employee.hasMany(Task);
 Task.belongsTo(Employee);
-
 
 module.exports = Employee;
