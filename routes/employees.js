@@ -8,17 +8,19 @@ const {
   updateEmployee,
   getEmployeeProjects } = require('../controllers/employees')
 
+const { protect, authorize } = require('../middleware/auth')
+
 router.route('/')
-  .get(getAllEmployees)
-  .post(createEmployee)
+  .get(protect, authorize('Project Manager'), getAllEmployees)
+  .post(protect, authorize('Project Manager'),  createEmployee)
 
 router.route('/:id')
-  .get(getSingleEmployee)
-  .delete(removeEmployee)
-  .put(updateEmployee)
+  .get(protect, authorize('Project Manager'), getSingleEmployee)
+  .delete(protect, authorize('Project Manager'), removeEmployee)
+  .put(protect,  authorize('Project Manager'),updateEmployee)
 
 router.route('/:id/projects')
-  .get(getEmployeeProjects)
+  .get(protect, authorize('Project Manager'), getEmployeeProjects)
 
 
 module.exports = router;

@@ -1,6 +1,8 @@
 const express = require('express');
 const errorHandler = require('./middleware/error');
 const dotenv = require('dotenv');
+const db = require('./config/database');
+const cookieParser = require('cookie-parser');
 
 // PORT
 const PORT = process.env.PORT || 5000;
@@ -14,16 +16,16 @@ dotenv.config({ path: './config/config.env' });
 // Body parser
 app.use(express.json());
 
+// Cookie parser
+app.use(cookieParser());
+
 // routes
 const employees = require('./routes/employees');
 const tasks = require('./routes/tasks');
 const projects = require('./routes/projects');
 const auth = require('./routes/auth');
 
-// Database
-const db = require('./config/database');
-
-// Test DB
+// Test DB connection
 db
   .authenticate()
   .then(() => console.log('Connected to DB successfully!'))

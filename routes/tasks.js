@@ -7,13 +7,15 @@ const {
   removeTask,
   updateTask } = require('../controllers/tasks')
 
+const { protect, authorize } = require('../middleware/auth');
+
 router.route('/')
-  .get(getAllTasks)
-  .post(createTask)
+  .get(protect, authorize('Project Manager', 'Project Employee'), getAllTasks)
+  .post(protect, authorize('Project Manager'), createTask)
 
 router.route('/:id')
-  .get(getSingleTask)
-  .delete(removeTask)
-  .put(updateTask)
+  .get(protect, authorize('Project Manager', 'Project Developer'), getSingleTask)
+  .delete(protect, authorize('Project Manager'), removeTask)
+  .put(protect, authorize('Project Manager', 'Project Developer'), updateTask)
 
 module.exports = router;

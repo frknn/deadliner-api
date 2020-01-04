@@ -40,9 +40,32 @@ exports.login = asyncHandler(async (req, res, next) => {
 
   // If no error has been occured, generate and return jwt
   // token for login
-  const token = employee.getSignedJwtToken();
-  res.status(200).json({
-    success: true,
-    token
-  })
+  sendTokenResponse(employee, 200, res);
 });
+
+
+// Generate token, create cookie and send response
+const sendTokenResponse = (employee, statusCode, res) => {
+
+  // Create token
+  const token = employee.getSignedJwtToken();
+
+  // Cookie options
+  const opitons = {
+    expires: new Date(Date.now() + process.env.JWT_COOKIE_EXPIRE * 24 * 60 * 60 * 1000),
+    httpOnly: true
+  }
+
+  if (process.env.NODE_ENV === 'production') {
+    opitons.secure = true;
+  }
+
+  // Return response
+  res
+    .status(statusCode)
+    .cookie('token', token, opitons)
+    .json({
+      success: true,
+      token
+    })
+}
