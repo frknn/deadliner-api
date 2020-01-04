@@ -28,7 +28,7 @@ const Employee = db.define('employee', {
   },
   password: {
     type: Sequelize.TEXT,
-    allowNull: false,
+    allowNull: false
   }
 });
 
@@ -38,9 +38,13 @@ Employee.addHook('beforeSave', async function (employee, options) {
 })
 
 Employee.prototype.getSignedJwtToken = function () {
-  return jwt.sign({ id: this.id }, 'asdasd', {
-    expiresIn: '30d'
+  return jwt.sign({ id: this.id }, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRE
   })
+}
+
+Employee.prototype.isPasswordMatch = async function(enteredPw){
+  return await bcrypt.compare(enteredPw, this.password)
 }
 
 /* 

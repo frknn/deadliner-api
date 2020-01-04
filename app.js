@@ -1,11 +1,15 @@
 const express = require('express');
 const errorHandler = require('./middleware/error');
+const dotenv = require('dotenv');
 
 // PORT
 const PORT = process.env.PORT || 5000;
 
 // Express instance
 const app = express();
+
+// Load env variables
+dotenv.config({ path: './config/config.env' });
 
 // Body parser
 app.use(express.json());
