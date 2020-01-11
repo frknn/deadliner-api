@@ -60,6 +60,8 @@ exports.getCurrentEmployeee = asyncHandler(async (req, res, next) => {
   res.status(200).json({ success: true, data: currentEmployee })
 })
 
+
+
 // Generate token, create cookie and send response
 const sendTokenResponse = (employee, statusCode, res) => {
 

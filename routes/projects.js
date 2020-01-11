@@ -11,15 +11,15 @@ const {
 const { protect, authorize } = require('../middleware/auth')
 
 router.route('/')
-  .get(protect, authorize('Project Manager'), getAllProjects)
-  .post(protect, authorize('Project Manager'), createProject)
+  .get(protect, authorize('Manager', 'Creator', 'Admin'), getAllProjects)
+  .post(protect, authorize('Creator', 'Admin'), createProject)
 
 router.route('/:id')
-  .get(protect, authorize('Project Manager', 'Project Developer'), getSingleProject)
-  .delete(protect, authorize('Project Manager'), removeProject)
-  .put(protect, authorize('Project Manager'), updateProject)
+  .get(protect, authorize('Manager', 'Creator', 'Admin'), getSingleProject)
+  .delete(protect, authorize('Creator', 'Admin'), removeProject)
+  .put(protect, authorize('Creator', 'Admin'), updateProject)
 
 router.route('/:id/employees')
-  .get(protect, authorize('Project Manager', 'Project Developer'), getProjectEmployees)
+  .get(protect, authorize('Developer', 'Manager', 'Creator', 'Admin'), getProjectEmployees)
 
 module.exports = router;

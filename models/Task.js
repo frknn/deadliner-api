@@ -10,6 +10,9 @@ const Task = db.define('task', {
   },
   deadline: {
     type: Sequelize.DATE
+  },
+  createdBy: {
+    type: Sequelize.INTEGER
   }
 });
 

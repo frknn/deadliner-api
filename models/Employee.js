@@ -16,7 +16,7 @@ const Employee = db.define('employee', {
   },
   role: {
     type: Sequelize.ENUM,
-    values: ['Project Manager', 'Project Developer']
+    values: ['Manager', 'Developer', 'Creator','Admin']
   },
   email: {
     type: Sequelize.STRING(60),

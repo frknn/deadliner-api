@@ -14,6 +14,12 @@ const Project = db.define('project', {
   },
   description: {
     type: Sequelize.TEXT
+  },
+  createdBy: {
+    type: Sequelize.INTEGER
+  },
+  assignedTo: {
+    type: Sequelize.INTEGER
   }
 });
 
