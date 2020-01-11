@@ -1,4 +1,6 @@
 const Employee = require('../models/Employee');
+const Task = require('../models/Task');
+const Project = require('../models/Project');
 const asyncHandler = require('../middleware/async');
 const ErrorResponse = require('../utils/errorResponse');
 
@@ -43,6 +45,20 @@ exports.login = asyncHandler(async (req, res, next) => {
   sendTokenResponse(employee, 200, res);
 });
 
+exports.getCurrentEmployeee = asyncHandler(async (req, res, next) => {
+  const currentEmployee = await Employee.findByPk(req.user.id, {
+    include: [{
+      model: Task,
+      attributes: ['name', 'status', 'deadline'],
+      include: [{
+        model: Project,
+        attributes: ['name', 'status', 'deadline', 'description']
+      }]
+    }]
+  });
+
+  res.status(200).json({ success: true, data: currentEmployee })
+})
 
 // Generate token, create cookie and send response
 const sendTokenResponse = (employee, statusCode, res) => {
@@ -51,19 +67,19 @@ const sendTokenResponse = (employee, statusCode, res) => {
   const token = employee.getSignedJwtToken();
 
   // Cookie options
-  const opitons = {
+  const options = {
     expires: new Date(Date.now() + process.env.JWT_COOKIE_EXPIRE * 24 * 60 * 60 * 1000),
     httpOnly: true
   }
 
   if (process.env.NODE_ENV === 'production') {
-    opitons.secure = true;
+    options.secure = true;
   }
 
   // Return response
   res
     .status(statusCode)
-    .cookie('token', token, opitons)
+    .cookie('token', token, options)
     .json({
       success: true,
       token

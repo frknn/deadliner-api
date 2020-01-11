@@ -10,7 +10,6 @@ const {
 
 const { protect, authorize } = require('../middleware/auth')
 
-
 router.route('/')
   .get(protect, authorize('Project Manager'), getAllProjects)
   .post(protect, authorize('Project Manager'), createProject)

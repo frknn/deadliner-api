@@ -41,7 +41,7 @@ app.get('/', (req, res) => res.send('INDEX'));
 app.use('/employees', employees);
 app.use('/tasks', tasks);
 app.use('/projects', projects);
-app.use(auth);
+app.use('/auth', auth);
 
 // error handler middleware
 app.use(errorHandler);
