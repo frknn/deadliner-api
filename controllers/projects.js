@@ -64,6 +64,9 @@ exports.getProjectEmployees = asyncHandler(async (req, res, next) => {
 });
 
 exports.createProject = asyncHandler(async (req, res, next) => {
+
+  req.body.createdBy = req.user.id;
+
   const newProject = await Project.create(req.body);
 
   res.status(201).json({ success: true, data: newProject });

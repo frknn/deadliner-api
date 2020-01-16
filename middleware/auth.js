@@ -2,6 +2,8 @@ const jwt = require('jsonwebtoken');
 const asyncHandler = require('./async');
 const ErrorResponse = require('../utils/errorResponse');
 const Employee = require('../models/Employee');
+const Project = require('../models/Project');
+const Task = require('../models/Employee');
 
 // Protect routes
 exports.protect = asyncHandler(async (req, res, next) => {
@@ -29,7 +31,7 @@ exports.protect = asyncHandler(async (req, res, next) => {
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    console.log(decoded);
+    console.log("Decoded JWT: ", decoded);
 
     req.user = await Employee.findByPk(decoded.id);
 

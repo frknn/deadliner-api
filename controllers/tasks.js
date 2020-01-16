@@ -19,6 +19,10 @@ exports.getAllTasks = asyncHandler(async (req, res, next) => {
 });
 
 exports.createTask = asyncHandler(async (req, res, next) => {
+
+  // adding created-by info to task
+  req.body.createdBy = req.user.id
+
   const newTask = await Task.create(req.body);
 
   res.status(201).json({ success: true, data: newTask });
@@ -59,6 +63,24 @@ exports.updateTask = asyncHandler(async (req, res, next) => {
     );
   }
 
+  if (req.user.role === 'Manager' && task.createdBy !== req.user.id) {
+    return next(
+      new ErrorResponse('Not authorized to perform this operation!', 403)
+    )
+  } else if (req.user.role === 'Developer') {
+    if (task.employeeId !== req.user.id) {
+      return next(
+        new ErrorResponse('You cannot update a task that does not belong to you!', 403)
+      );
+    }
+    else if (Object.keys(req.body).filter(key => key !== 'status').length > 0) {
+      return next(
+        new ErrorResponse('You can only update the status of a task!', 403)
+      );
+    }
+  }
+
+  // extracting affected row amount and updated version of task
   let [rowsUpdated, updatedTask] = await Task.update(req.body, {
     returning: true, where: { id: req.params.id }
   });
