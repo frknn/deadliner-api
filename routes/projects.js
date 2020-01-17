@@ -15,7 +15,7 @@ router.route('/')
   .post(protect, authorize('Creator', 'Admin'), createProject)
 
 router.route('/:id')
-  .get(protect, authorize('Manager', 'Creator', 'Admin'), getSingleProject)
+  .get(protect, authorize('Developer', 'Manager', 'Creator', 'Admin'), getSingleProject)
   .delete(protect, authorize('Creator', 'Admin'), removeProject)
   .put(protect, authorize('Creator', 'Admin'), updateProject)
 

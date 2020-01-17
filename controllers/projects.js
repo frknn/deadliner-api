@@ -29,6 +29,10 @@ exports.getAllProjects = asyncHandler(async (req, res, next) => {
   */
   projectsData.forEach(project => project.employees = project.tasks.map(task => task.employee))
 
+  if (req.user.role === 'Manager') {
+    projectsData = projectsData.filter(project => project.assignedTo === req.user.id)
+  }
+
   res.status(200).json({
     success: true,
     data: projectsData
@@ -79,7 +83,7 @@ exports.getSingleProject = asyncHandler(async (req, res, next) => {
       attributes: ['name', 'status', 'deadline'],
       include: [{
         model: Employee,
-        attributes: ['first_name', 'last_name', 'job']
+        attributes: ['id', 'first_name', 'last_name', 'job']
       }]
     }]
   })
@@ -93,6 +97,18 @@ exports.getSingleProject = asyncHandler(async (req, res, next) => {
   let projectData = JSON.parse(JSON.stringify(project))
 
   projectData.employees = projectData.tasks.map(task => task.employee)
+
+  if (req.user.role === 'Developer' && projectData.employees.filter(emp => emp.id === req.user.id).length === 0) {
+    return next(
+      new ErrorResponse('Cannot access a project you do not own.', 403)
+    )
+  }
+
+  if(req.user.role === 'Manager' && project.assignedTo !== req.user.id){
+    return next(
+      new ErrorResponse('Cannot access a project you are not assigned to.', 403)
+    )
+  }
 
   res.status(200).json({ success: true, data: projectData });
 });

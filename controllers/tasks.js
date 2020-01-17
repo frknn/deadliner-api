@@ -5,13 +5,17 @@ const ErrorResponse = require('../utils/errorResponse');
 const asyncHandler = require('../middleware/async');
 
 exports.getAllTasks = asyncHandler(async (req, res, next) => {
-  const tasks = await Task.findAll({
+  let tasks = await Task.findAll({
     include: [
       { model: Employee, as: 'employee' },
       { model: Project, as: 'project' }
     ]
-
   });
+
+  if (req.user.role === 'Manager') {
+    tasks = tasks.filter(task => task.createdBy === req.user.id)
+  }
+
   res.status(200).json({
     success: true,
     data: tasks
@@ -28,12 +32,18 @@ exports.createTask = asyncHandler(async (req, res, next) => {
   res.status(201).json({ success: true, data: newTask });
 });
 
-exports.getSingleTask = asyncHandler(async (req, res) => {
+exports.getSingleTask = asyncHandler(async (req, res, next) => {
   const task = await Task.findByPk(req.params.id)
 
   if (!task) {
     return next(
-      new ErrorResponse('No Task with given ID', 400)
+      new ErrorResponse('No Task with given ID!', 400)
+    );
+  }
+
+  if(req.user.role === 'Manager' && task.createdBy !== req.user.id){
+    return next(
+      new ErrorResponse('Can not access a task you have not created!', 403)
     );
   }
 
@@ -47,6 +57,12 @@ exports.removeTask = asyncHandler(async (req, res, next) => {
     return next(
       new ErrorResponse('No Task with given ID', 400)
     );
+  }
+
+  if (task.createdBy !== req.user.id) {
+    return next(
+      new ErrorResponse('Not authorized to perform this operation!', 403)
+    )
   }
 
   await task.destroy();

@@ -52,7 +52,7 @@ exports.getCurrentEmployeee = asyncHandler(async (req, res, next) => {
       attributes: ['name', 'status', 'deadline'],
       include: [{
         model: Project,
-        attributes: ['name', 'status', 'deadline', 'description']
+        attributes: ['id','name', 'status', 'deadline', 'description']
       }]
     }]
   });
