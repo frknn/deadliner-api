@@ -43,10 +43,12 @@ exports.protect = asyncHandler(async (req, res, next) => {
           },
           include: [{
             model: Project, as: 'project', include: Task
+          }, {
+            model: Employee, as: 'creator'
           }]
         });
         user.setDataValue('assignments', assignments.map(assignment => assignment.get()));
-        req.user = user;
+        req.user = user.get();
         break;
 
       case 'Manager':
@@ -59,8 +61,13 @@ exports.protect = asyncHandler(async (req, res, next) => {
           }]
         });
 
+        const assignedProjects = await Project.findAll({
+          where: { managerId: user.get('id') }
+        });
+
         user.setDataValue('createdTasks', createdTasks.map(task => task.get()));
-        req.user = user;
+        user.setDataValue('assignedProjects', assignedProjects.map(proj => proj.get()))
+        req.user = user.get();
         break;
 
       case 'Creator':
@@ -81,10 +88,10 @@ exports.protect = asyncHandler(async (req, res, next) => {
           }]
         });
         user.setDataValue('createdProjects', createdProjects.map(project => project.get()));
-        req.user = user;
+        req.user = user.get();
         break;
       default:
-        req.user = user;
+        req.user = user.get();
         break;
     }
 

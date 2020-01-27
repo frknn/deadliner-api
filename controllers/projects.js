@@ -132,10 +132,20 @@ exports.updateProject = asyncHandler(async (req, res, next) => {
     );
   }
 
-  if (req.user.role === 'Creator' && project.creatorId !== req.user.id) {
-    return next(
-      new ErrorResponse('You can not update a project that does not belong to you!', 403)
-    );
+  if (req.user.role === 'Creator') {
+    if (project.creatorId !== req.user.id) {
+      return next(
+        new ErrorResponse('You can not update a project that does not belong to you!', 403)
+      );
+    }
+    if (req.body.managerId) {
+      const emp = await Employee.findByPk(req.body.managerId);
+      if (emp.get('role') !== 'Manager') {
+        return next(
+          new ErrorResponse('You can only assign projects to managers!', 403)
+        )
+      }
+    }
   }
 
   let [rowsUpdated, updatedProject] = await Project.update(req.body, {

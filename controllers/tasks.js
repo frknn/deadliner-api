@@ -26,8 +26,47 @@ exports.getAllTasks = asyncHandler(async (req, res, next) => {
 
 exports.createTask = asyncHandler(async (req, res, next) => {
 
+  if (req.user.role === 'Manager' && req.body.creatorId) {
+    return next(
+      new ErrorResponse('You are not allowed to perform this operationa!', 403)
+    )
+  }
   // adding creatorId info to task
   req.body.creatorId = req.user.id
+
+  // If task wanna be assigned to a dev at creation,
+  // check that employee exists or role of employee is developer
+  if (req.body.developerId) {
+    const emp = await Employee.findByPk(req.body.developerId);
+    if (!emp) {
+      return next(
+        new ErrorResponse('No Employee with given ID!', 400)
+      );
+    } else if (emp.get('role') !== 'Developer') {
+      return next(
+        new ErrorResponse('You can only assign tasks to developers!', 403)
+      )
+    }
+  }
+
+  // If task wanna be assigned to a project at creation,
+  // check that project exists or current user
+  // is the manager of the project
+  if (req.body.projectId) {
+    const project = await Project.findByPk(req.body.projectId)
+    if (!project) {
+      return next(
+        new ErrorResponse('No project with given ID!', 400)
+      )
+    }
+    if (req.user.role === 'Manager') {
+      if (!req.user.assignedProjects.map(proj => proj.id).includes(req.body.projectId)) {
+        return next(
+          new ErrorResponse('You can not assign a task to a project that does not belong to you!', 403)
+        )
+      }
+    }
+  }
 
   const newTask = await Task.create(req.body);
 
@@ -81,22 +120,32 @@ exports.updateTask = asyncHandler(async (req, res, next) => {
     );
   }
 
+  // if current user is a manager, do not allow to update the
+  // creatorId, updating someone elses task or assigning a task
+  // to someone elses project
+  // if current user is a developer, only allow to update
+  // their tasks' 'status' attribute.
   if (req.user.role === 'Manager') {
+    if (req.body.creatorId) {
+      return next(
+        new ErrorResponse('You cannot change creatorId!', 400)
+      )
+    }
     if (task.creatorId !== req.user.id) {
       return next(
         new ErrorResponse('Not authorized to perform this operation!', 403)
       )
     }
-    if (Object.keys(req.body).includes('projectId')) {
-      const projects = await Project.findAll({ where: { managerId: req.user.id } })
-      if (!projects.map(project => project.id).includes(req.body.projectId)) {
+
+    if (req.body.projectId) {
+      if (!req.user.assignedProjects.map(proj => proj.id).includes(req.body.projectId)) {
         return next(
           new ErrorResponse('You can not assign a task to a project that does not belong to you!', 403)
         )
       }
     }
   } else if (req.user.role === 'Developer') {
-    if (task.employeeId !== req.user.id) {
+    if (task.developerId !== req.user.id) {
       return next(
         new ErrorResponse('You cannot update a task that does not belong to you!', 403)
       );
@@ -105,6 +154,19 @@ exports.updateTask = asyncHandler(async (req, res, next) => {
       return next(
         new ErrorResponse('You can only update the status of a task!', 403)
       );
+    }
+  }
+
+  if (req.body.developerId) {
+    const emp = await Employee.findByPk(req.body.developerId);
+    if (!emp) {
+      return next(
+        new ErrorResponse('No Employee with given ID!', 400)
+      );
+    } else if (emp.get('role') !== 'Developer') {
+      return next(
+        new ErrorResponse('You can only assign tasks to developers!', 403)
+      )
     }
   }
 
