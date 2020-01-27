@@ -46,20 +46,8 @@ exports.login = asyncHandler(async (req, res, next) => {
 });
 
 exports.getCurrentEmployeee = asyncHandler(async (req, res, next) => {
-  const currentEmployee = await Employee.findByPk(req.user.id, {
-    include: [{
-      model: Task,
-      attributes: ['name', 'status', 'deadline'],
-      include: [{
-        model: Project,
-        attributes: ['id','name', 'status', 'deadline', 'description']
-      }]
-    }]
-  });
-
-  res.status(200).json({ success: true, data: currentEmployee })
+  res.status(200).json({ success: true, data: req.user })
 })
-
 
 
 // Generate token, create cookie and send response

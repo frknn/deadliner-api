@@ -5,15 +5,17 @@ const ErrorResponse = require('../utils/errorResponse');
 const asyncHandler = require('../middleware/async');
 
 exports.getAllTasks = asyncHandler(async (req, res, next) => {
-  let tasks = await Task.findAll({
+  const tasks = await Task.findAll({
     include: [
-      { model: Employee, as: 'employee' },
+      { model: Employee, as: 'developer' },
+      { model: Employee, as: 'creator' },
       { model: Project, as: 'project' }
     ]
   });
 
   if (req.user.role === 'Manager') {
-    tasks = tasks.filter(task => task.createdBy === req.user.id)
+    const createdTasks = tasks.filter(task => task.creatorId === req.user.id)
+    return res.status(200).json({ success: true, data: createdTasks });
   }
 
   res.status(200).json({
@@ -24,8 +26,8 @@ exports.getAllTasks = asyncHandler(async (req, res, next) => {
 
 exports.createTask = asyncHandler(async (req, res, next) => {
 
-  // adding created-by info to task
-  req.body.createdBy = req.user.id
+  // adding creatorId info to task
+  req.body.creatorId = req.user.id
 
   const newTask = await Task.create(req.body);
 
@@ -41,7 +43,7 @@ exports.getSingleTask = asyncHandler(async (req, res, next) => {
     );
   }
 
-  if(req.user.role === 'Manager' && task.createdBy !== req.user.id){
+  if (req.user.role === 'Manager' && task.creatorId !== req.user.id) {
     return next(
       new ErrorResponse('Can not access a task you have not created!', 403)
     );
@@ -59,7 +61,7 @@ exports.removeTask = asyncHandler(async (req, res, next) => {
     );
   }
 
-  if (task.createdBy !== req.user.id) {
+  if (task.creatorId !== req.user.id) {
     return next(
       new ErrorResponse('Not authorized to perform this operation!', 403)
     )
@@ -79,10 +81,20 @@ exports.updateTask = asyncHandler(async (req, res, next) => {
     );
   }
 
-  if (req.user.role === 'Manager' && task.createdBy !== req.user.id) {
-    return next(
-      new ErrorResponse('Not authorized to perform this operation!', 403)
-    )
+  if (req.user.role === 'Manager') {
+    if (task.creatorId !== req.user.id) {
+      return next(
+        new ErrorResponse('Not authorized to perform this operation!', 403)
+      )
+    }
+    if (Object.keys(req.body).includes('projectId')) {
+      const projects = await Project.findAll({ where: { managerId: req.user.id } })
+      if (!projects.map(project => project.id).includes(req.body.projectId)) {
+        return next(
+          new ErrorResponse('You can not assign a task to a project that does not belong to you!', 403)
+        )
+      }
+    }
   } else if (req.user.role === 'Developer') {
     if (task.employeeId !== req.user.id) {
       return next(

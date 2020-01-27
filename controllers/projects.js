@@ -12,64 +12,41 @@ exports.getAllProjects = asyncHandler(async (req, res, next) => {
       attributes: ['name', 'status', 'deadline'],
       include: [{
         model: Employee,
+        as: 'developer',
         attributes: ['first_name', 'last_name', 'job']
       }]
+    }, {
+      model: Employee,
+      as: 'creator',
+      attributes: ['first_name', 'last_name', 'job']
+    }, {
+      model: Employee,
+      as: 'manager'
     }]
   });
 
-  /* tranforming the returning projects object
-     to its json format which includes only related object data,
-     not metadata 
-  */
-  let projectsData = JSON.parse(JSON.stringify(projects))
+  // add developers to each project as a seperate attribute,
+  // by iterating over tasks and collect employee data from each task
+  projects.map(project => project.setDataValue('developers', project.get('tasks').map(task => task.developer)));
 
-  /* picked the employees from projects's tasks array and include
-     them into a employees array to provide a
-     more understandable and useful json data
-  */
-  projectsData.forEach(project => project.employees = project.tasks.map(task => task.employee))
-
+  // If current user is manager, return projects assigned to current user
+  // If current user is creator, return projects created by current user
+  // If current user is admin, return all projects
   if (req.user.role === 'Manager') {
-    projectsData = projectsData.filter(project => project.assignedTo === req.user.id)
+    const assignedProjects = projects.filter(project => project.managerId === req.user.id);
+    return res.status(200).json({ success: true, data: assignedProjects });
+  } else if (req.user.role === 'Creator') {
+    const createdProjects = projects.filter(project => project.creatorId === req.user.id);
+    return res.status(200).json({ success: true, data: createdProjects });
+  } else {
+    res.status(200).json({ success: true, data: projects });
   }
 
-  res.status(200).json({
-    success: true,
-    data: projectsData
-  });
-});
-
-exports.getProjectEmployees = asyncHandler(async (req, res, next) => {
-  const project = await Project.findByPk(req.params.id, {
-    include: [{
-      model: Task,
-      attributes: ['name', 'status', 'deadline'],
-      include: [{
-        model: Employee,
-        attributes: ['first_name', 'last_name', 'job']
-      }]
-    }]
-  });
-
-  if (!project) {
-    return next(
-      new ErrorResponse('No Project with given ID', 400)
-    );
-  }
-
-  let projectData = JSON.parse(JSON.stringify(project))
-
-  let employees = projectData.tasks.map(task => task.employee)
-
-  res.status(200).json({
-    success: true,
-    data: employees
-  });
 });
 
 exports.createProject = asyncHandler(async (req, res, next) => {
 
-  req.body.createdBy = req.user.id;
+  req.body.creatorId = req.user.id;
 
   const newProject = await Project.create(req.body);
 
@@ -83,8 +60,19 @@ exports.getSingleProject = asyncHandler(async (req, res, next) => {
       attributes: ['name', 'status', 'deadline'],
       include: [{
         model: Employee,
+        as: 'developer',
+        attributes: ['id', 'first_name', 'last_name', 'job']
+      }, {
+        model: Employee,
+        as: 'creator',
         attributes: ['id', 'first_name', 'last_name', 'job']
       }]
+    }, {
+      model: Employee, as: 'creator',
+      attributes: ['id', 'first_name', 'last_name', 'job']
+    }, {
+      model: Employee, as: 'manager',
+      attributes: ['id', 'first_name', 'last_name', 'job']
     }]
   })
 
@@ -94,23 +82,25 @@ exports.getSingleProject = asyncHandler(async (req, res, next) => {
     );
   }
 
-  let projectData = JSON.parse(JSON.stringify(project))
+  // added developers as a seperate attribute to project,
+  // by iterating over tasks of that project and collecting
+  // developer data
+  const developers = project.get('tasks').map(task => task.developer);
+  project.setDataValue('developers', developers)
 
-  projectData.employees = projectData.tasks.map(task => task.employee)
-
-  if (req.user.role === 'Developer' && projectData.employees.filter(emp => emp.id === req.user.id).length === 0) {
+  if (req.user.role === 'Developer' && project.get().developers.filter(dev => dev.id === req.user.id).length === 0) {
     return next(
-      new ErrorResponse('Cannot access a project you do not own.', 403)
+      new ErrorResponse('Cannot access a project you are not working for!', 403)
     )
   }
 
-  if(req.user.role === 'Manager' && project.assignedTo !== req.user.id){
+  if (req.user.role === 'Manager' && project.managerId !== req.user.id) {
     return next(
       new ErrorResponse('Cannot access a project you are not assigned to.', 403)
     )
   }
 
-  res.status(200).json({ success: true, data: projectData });
+  res.status(200).json({ success: true, data: project });
 });
 
 exports.removeProject = asyncHandler(async (req, res, next) => {
@@ -119,6 +109,12 @@ exports.removeProject = asyncHandler(async (req, res, next) => {
   if (!project) {
     return next(
       new ErrorResponse('No Project with given ID', 400)
+    );
+  }
+
+  if (req.user.role === 'Creator' && project.creatorId !== req.user.id) {
+    return next(
+      new ErrorResponse('You can not delete a project that does not belong to you!', 403)
     );
   }
 
@@ -133,6 +129,12 @@ exports.updateProject = asyncHandler(async (req, res, next) => {
   if (!project) {
     return next(
       new ErrorResponse('No Project with given ID', 400)
+    );
+  }
+
+  if (req.user.role === 'Creator' && project.creatorId !== req.user.id) {
+    return next(
+      new ErrorResponse('You can not update a project that does not belong to you!', 403)
     );
   }
 

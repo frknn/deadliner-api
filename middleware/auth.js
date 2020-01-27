@@ -3,7 +3,7 @@ const asyncHandler = require('./async');
 const ErrorResponse = require('../utils/errorResponse');
 const Employee = require('../models/Employee');
 const Project = require('../models/Project');
-const Task = require('../models/Employee');
+const Task = require('../models/Task');
 
 // Protect routes
 exports.protect = asyncHandler(async (req, res, next) => {
@@ -33,11 +33,65 @@ exports.protect = asyncHandler(async (req, res, next) => {
 
     console.log("Decoded JWT: ", decoded);
 
-    req.user = await Employee.findByPk(decoded.id);
+    const user = await Employee.findByPk(decoded.id);
+
+    switch (user.get('role')) {
+      case 'Developer':
+        const assignments = await Task.findAll({
+          where: {
+            developerId: user.get('id')
+          },
+          include: [{
+            model: Project, as: 'project', include: Task
+          }]
+        });
+        user.setDataValue('assignments', assignments.map(assignment => assignment.get()));
+        req.user = user;
+        break;
+
+      case 'Manager':
+        const createdTasks = await Task.findAll({
+          where: {
+            creatorId: user.get('id')
+          },
+          include: [{
+            model: Project, as: 'project'
+          }]
+        });
+
+        user.setDataValue('createdTasks', createdTasks.map(task => task.get()));
+        req.user = user;
+        break;
+
+      case 'Creator':
+        const createdProjects = await Project.findAll({
+          where: {
+            creatorId: user.get('id')
+          },
+          include: [{
+            model: Task,
+            include: [{
+              model: Employee, as: 'developer'
+            }, {
+              model: Employee, as: 'creator'
+            }]
+          }, {
+            model: Employee,
+            as: 'manager'
+          }]
+        });
+        user.setDataValue('createdProjects', createdProjects.map(project => project.get()));
+        req.user = user;
+        break;
+      default:
+        req.user = user;
+        break;
+    }
 
     next();
 
   } catch (err) {
+    console.log(err);
     return next(new ErrorResponse('Not authorized to access this route!', 401))
   }
 

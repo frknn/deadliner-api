@@ -5,61 +5,60 @@ const ErrorResponse = require('../utils/errorResponse');
 const asyncHandler = require('../middleware/async');
 
 exports.getAllEmployees = asyncHandler(async (req, res, next) => {
+
   const employees = await Employee.findAll({
     include: [{
       model: Task,
+      as: 'assignments',
       attributes: ['name', 'status', 'deadline'],
       include: [{
         model: Project,
         attributes: ['name', 'status', 'deadline', 'description']
       }]
-    }]
-  });
-
-  /* tranforming the returning employees object
-     to its json format which includes only related object data
-     not metadata 
-  */
-  let employeesData = JSON.parse(JSON.stringify(employees))
-
-  /* picked the projects from employee's tasks array and include
-     them into a projects array to provide a
-     more understandable and useful json data
-  */
-  employeesData.forEach(employee => employee.projects = employee.tasks.map(task => task.project))
-
-  res.status(200).json({
-    success: true,
-    data: employeesData
-  });
-});
-
-exports.getEmployeeProjects = asyncHandler(async (req, res, next) => {
-  const employee = await Employee.findByPk(req.params.id, {
-    include: [{
+    }, {
       model: Task,
+      as: 'createdTasks',
       attributes: ['name', 'status', 'deadline'],
       include: [{
         model: Project,
         attributes: ['name', 'status', 'deadline', 'description']
       }]
+    }, {
+      model: Project,
+      as: 'createdProjects',
+      include: [{
+        model: Task,
+        attributes: ['name', 'status', 'deadline'],
+        include: [{
+          model: Employee,
+          as: 'developer',
+          attributes: ['first_name', 'last_name', 'job']
+        }]
+      }, {
+        model: Employee,
+        as: 'manager'
+      }]
     }]
   });
 
-  if (!employee) {
-    return next(
-      new ErrorResponse('No Employee with given ID', 400)
-    );
+  // got all employees, filtered them by their roles and got developers, extracted projects to a separate attribute by iterating over "tasks" data
+  employees.filter(e => e.role === 'Developer').map(d => d.setDataValue('projects', d.get('assignments').map(a => a.project)))
+
+  // delete password attribute from all of employee objects
+  employees.map(employee => delete employee.get().password)
+
+  // If current user is manager, return just developers
+  // If current user is creator, return just managers
+  // If current user is admin, return all users
+  if (req.user.role === 'Manager') {
+    const developers = employees.filter(e => e.role === 'Developer')
+    res.status(200).json({ success: true, data: developers });
+  } else if (req.user.role === 'Creator') {
+    const managers = employees.filter(e => e.role === 'Manager')
+    res.status(200).json({ success: true, data: managers });
+  } else {
+    res.status(200).json({ success: true, data: employees });
   }
-
-  let employeeData = JSON.parse(JSON.stringify(employee))
-
-  let projects = employeeData.tasks.map(task => task.project)
-
-  res.status(200).json({
-    success: true,
-    data: projects
-  });
 
 });
 
@@ -72,7 +71,7 @@ exports.createEmployee = asyncHandler(async (req, res, next) => {
 exports.getSingleEmployee = asyncHandler(async (req, res, next) => {
   const employee = await Employee.findByPk(req.params.id, {
     include: [{
-      model: Task,
+      model: Task, as: 'assignments',
       attributes: ['name', 'status', 'deadline'],
       include: [{
         model: Project,
@@ -87,11 +86,13 @@ exports.getSingleEmployee = asyncHandler(async (req, res, next) => {
     );
   }
 
-  let employeeData = JSON.parse(JSON.stringify(employee))
+  // added projects as a seperate attribute to developer,
+  // by iterating over tasks of that developer and collecting
+  // project data
+  const projects = employee.get('assignments').map(assignment => assignment.project);
+  employee.setDataValue('projects', projects)
 
-  employeeData.projects = employeeData.tasks.map(task => task.project)
-
-  res.status(200).json({ success: true, data: employeeData });
+  res.status(200).json({ success: true, data: employee });
 });
 
 exports.removeEmployee = asyncHandler(async (req, res, next) => {
