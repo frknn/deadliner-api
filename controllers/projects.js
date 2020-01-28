@@ -46,7 +46,30 @@ exports.getAllProjects = asyncHandler(async (req, res, next) => {
 
 exports.createProject = asyncHandler(async (req, res, next) => {
 
+  // Creators are not allowed to change the creatorId of the project
+  if (req.user.role === 'Creator' && req.body.creatorId) {
+    return next(
+      new ErrorResponse('You are not allowed to perform this operation!', 403)
+    )
+  }
+
+  // adding creatorId info to project
   req.body.creatorId = req.user.id;
+
+  // If project wanna be assigned to a manager at creation,
+  // check that employee exists and is a manager
+  if (req.body.managerId) {
+    const emp = await Employee.findByPk(req.body.managerId);
+    if (!emp) {
+      return next(
+        new ErrorResponse('No Employee with given ID!', 400)
+      );
+    } else if (emp.get('role') !== 'Manager') {
+      return next(
+        new ErrorResponse('You can only assign projects to managers!', 403)
+      )
+    }
+  }
 
   const newProject = await Project.create(req.body);
 
@@ -132,19 +155,29 @@ exports.updateProject = asyncHandler(async (req, res, next) => {
     );
   }
 
+  // do not allow assigning a project to an employee
+  // who is not a manager
+  if (req.body.managerId) {
+    const emp = await Employee.findByPk(req.body.managerId);
+    if (emp.get('role') !== 'Manager') {
+      return next(
+        new ErrorResponse('You can only assign projects to managers!', 403)
+      )
+    }
+  }
+
+  // if current user is a creator, do not allow to updating creatorId or
+  // updating someone elses project
   if (req.user.role === 'Creator') {
+    if (req.body.creatorId) {
+      return next(
+        new ErrorResponse('You are not allowed to perform this operation!', 403)
+      )
+    }
     if (project.creatorId !== req.user.id) {
       return next(
         new ErrorResponse('You can not update a project that does not belong to you!', 403)
       );
-    }
-    if (req.body.managerId) {
-      const emp = await Employee.findByPk(req.body.managerId);
-      if (emp.get('role') !== 'Manager') {
-        return next(
-          new ErrorResponse('You can only assign projects to managers!', 403)
-        )
-      }
     }
   }
 

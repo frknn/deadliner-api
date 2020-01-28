@@ -22,6 +22,9 @@ exports.getAllEmployees = asyncHandler(async (req, res, next) => {
       include: [{
         model: Project,
         attributes: ['name', 'status', 'deadline', 'description']
+      }, {
+        model: Employee, as: 'developer',
+        attributes: ['first_name', 'last_name', 'job']
       }]
     }, {
       model: Project,
@@ -38,14 +41,30 @@ exports.getAllEmployees = asyncHandler(async (req, res, next) => {
         model: Employee,
         as: 'manager'
       }]
+    }, {
+      model: Project,
+      as: 'assignedProjects',
+      include: [{
+        model: Task,
+        attributes: ['name', 'status', 'deadline'],
+        include: [{
+          model: Employee,
+          as: 'developer',
+          attributes: ['first_name', 'last_name', 'job']
+        }]
+      }, {
+        model: Employee,
+        as: 'manager',
+        attributes: ['first_name', 'last_name', 'job']
+      }]
     }]
   });
 
   // got all employees, filtered them by their roles and got developers, extracted projects to a separate attribute by iterating over "tasks" data
   employees.filter(e => e.role === 'Developer').map(d => d.setDataValue('projects', d.get('assignments').map(a => a.project)))
 
-  // delete password attribute from all of employee objects
-  employees.map(employee => delete employee.get().password)
+  // delete unnecessary attributes from all of employee objects
+  employees.map(employee => deleteUnnecessaryFields(employee, returnUnnecessaryFields(employee.role)))
 
   // If current user is manager, return just developers
   // If current user is creator, return just managers
@@ -77,6 +96,49 @@ exports.getSingleEmployee = asyncHandler(async (req, res, next) => {
         model: Project,
         attributes: ['name', 'status', 'deadline', 'description']
       }]
+    }, {
+      model: Task,
+      as: 'createdTasks',
+      attributes: ['name', 'status', 'deadline'],
+      include: [{
+        model: Project,
+        attributes: ['name', 'status', 'deadline', 'description']
+      }, {
+        model: Employee, as: 'developer',
+        attributes: ['first_name', 'last_name', 'job']
+      }]
+    }, {
+      model: Project,
+      as: 'createdProjects',
+      include: [{
+        model: Task,
+        attributes: ['name', 'status', 'deadline'],
+        include: [{
+          model: Employee,
+          as: 'developer',
+          attributes: ['first_name', 'last_name', 'job']
+        }]
+      }, {
+        model: Employee,
+        as: 'manager',
+        attributes: ['first_name', 'last_name', 'job']
+      }]
+    }, {
+      model: Project,
+      as: 'assignedProjects',
+      include: [{
+        model: Task,
+        attributes: ['name', 'status', 'deadline'],
+        include: [{
+          model: Employee,
+          as: 'developer',
+          attributes: ['first_name', 'last_name', 'job']
+        }]
+      }, {
+        model: Employee,
+        as: 'manager',
+        attributes: ['first_name', 'last_name', 'job']
+      }]
     }]
   })
 
@@ -89,8 +151,26 @@ exports.getSingleEmployee = asyncHandler(async (req, res, next) => {
   // added projects as a seperate attribute to developer,
   // by iterating over tasks of that developer and collecting
   // project data
-  const projects = employee.get('assignments').map(assignment => assignment.project);
-  employee.setDataValue('projects', projects)
+  if (employee.role === 'Developer') {
+    const projects = employee.get('assignments').map(assignment => assignment.project);
+    employee.setDataValue('projects', projects)
+  }
+
+  // Managers can only display devs,
+  // creators can only display managers
+  if (req.user.role === 'Manager' && employee.role !== 'Developer') {
+    return next(
+      new ErrorResponse('You are not allowed to display info about this employee!', 403)
+    )
+  }
+  if (req.user.role === 'Creator' && employee.role !== 'Manager') {
+    return next(
+      new ErrorResponse('You are not allowed to display info about this employee!', 403)
+    )
+  }
+
+  // deleting unnecessary attributes from found employee
+  deleteUnnecessaryFields(employee, returnUnnecessaryFields(employee.role))
 
   res.status(200).json({ success: true, data: employee });
 });
@@ -128,3 +208,17 @@ exports.updateEmployee = asyncHandler(async (req, res, next) => {
     affectedRows: rowsUpdated
   });
 });
+
+// deletes given attributes from given employee
+const deleteUnnecessaryFields = (emp, fields) => {
+  fields.forEach(field => delete emp.get()[field])
+}
+
+// returns different unnecessary fields according to given role
+// as an array to use in deleteUnnecessaryAttr function
+const returnUnnecessaryFields = (role) => {
+  if (role === 'Developer') return ['createdTasks', 'createdProjects', 'assignedProjects', 'password']
+  if (role === 'Manager') return ['assignments', 'createdProjects', 'password']
+  if (role === 'Creator') return ['assignments', 'createdTasks', 'assignedProjects', 'password']
+  if (role === 'Admin') return ['assignments', 'createdTasks', 'createdProjects', 'assignedProjects', 'password']
+}

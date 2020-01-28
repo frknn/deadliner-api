@@ -47,6 +47,7 @@ exports.protect = asyncHandler(async (req, res, next) => {
             model: Employee, as: 'creator'
           }]
         });
+
         user.setDataValue('assignments', assignments.map(assignment => assignment.get()));
         req.user = user.get();
         break;

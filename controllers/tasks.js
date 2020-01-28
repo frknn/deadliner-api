@@ -35,7 +35,7 @@ exports.createTask = asyncHandler(async (req, res, next) => {
   req.body.creatorId = req.user.id
 
   // If task wanna be assigned to a dev at creation,
-  // check that employee exists or role of employee is developer
+  // check that employee exists and is a developer
   if (req.body.developerId) {
     const emp = await Employee.findByPk(req.body.developerId);
     if (!emp) {
