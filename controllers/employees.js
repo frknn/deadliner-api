@@ -3,6 +3,7 @@ const Task = require('../models/Task');
 const Project = require('../models/Project');
 const ErrorResponse = require('../utils/errorResponse');
 const asyncHandler = require('../middleware/async');
+const { deleteUnnecessaryFields, returnUnnecessaryFields } = require('../utils/unnecessaryFields');
 
 exports.getAllEmployees = asyncHandler(async (req, res, next) => {
 
@@ -208,17 +209,3 @@ exports.updateEmployee = asyncHandler(async (req, res, next) => {
     affectedRows: rowsUpdated
   });
 });
-
-// deletes given attributes from given employee
-const deleteUnnecessaryFields = (emp, fields) => {
-  fields.forEach(field => delete emp.get()[field])
-}
-
-// returns different unnecessary fields according to given role
-// as an array to use in deleteUnnecessaryAttr function
-const returnUnnecessaryFields = (role) => {
-  if (role === 'Developer') return ['createdTasks', 'createdProjects', 'assignedProjects', 'password']
-  if (role === 'Manager') return ['assignments', 'createdProjects', 'password']
-  if (role === 'Creator') return ['assignments', 'createdTasks', 'assignedProjects', 'password']
-  if (role === 'Admin') return ['assignments', 'createdTasks', 'createdProjects', 'assignedProjects', 'password']
-}

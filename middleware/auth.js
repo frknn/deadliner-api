@@ -4,6 +4,7 @@ const ErrorResponse = require('../utils/errorResponse');
 const Employee = require('../models/Employee');
 const Project = require('../models/Project');
 const Task = require('../models/Task');
+const { deleteUnnecessaryFields, returnUnnecessaryFields } = require('../utils/unnecessaryFields');
 
 // Protect routes
 exports.protect = asyncHandler(async (req, res, next) => {
@@ -33,68 +34,68 @@ exports.protect = asyncHandler(async (req, res, next) => {
 
     console.log("Decoded JWT: ", decoded);
 
-    const user = await Employee.findByPk(decoded.id);
-
-    switch (user.get('role')) {
-      case 'Developer':
-        const assignments = await Task.findAll({
-          where: {
-            developerId: user.get('id')
-          },
+    const user = await Employee.findByPk(decoded.id, {
+      include: [{
+        model: Task, as: 'assignments',
+        attributes: ['name', 'status', 'deadline'],
+        include: [{
+          model: Project,
+          attributes: ['name', 'status', 'deadline', 'description']
+        }]
+      }, {
+        model: Task,
+        as: 'createdTasks',
+        attributes: ['name', 'status', 'deadline'],
+        include: [{
+          model: Project,
+          attributes: ['name', 'status', 'deadline', 'description']
+        }, {
+          model: Employee, as: 'developer',
+          attributes: ['first_name', 'last_name', 'job']
+        }]
+      }, {
+        model: Project,
+        as: 'createdProjects',
+        include: [{
+          model: Task,
+          attributes: ['name', 'status', 'deadline'],
           include: [{
-            model: Project, as: 'project', include: Task
-          }, {
-            model: Employee, as: 'creator'
-          }]
-        });
-
-        user.setDataValue('assignments', assignments.map(assignment => assignment.get()));
-        req.user = user.get();
-        break;
-
-      case 'Manager':
-        const createdTasks = await Task.findAll({
-          where: {
-            creatorId: user.get('id')
-          },
-          include: [{
-            model: Project, as: 'project'
-          }]
-        });
-
-        const assignedProjects = await Project.findAll({
-          where: { managerId: user.get('id') }
-        });
-
-        user.setDataValue('createdTasks', createdTasks.map(task => task.get()));
-        user.setDataValue('assignedProjects', assignedProjects.map(proj => proj.get()))
-        req.user = user.get();
-        break;
-
-      case 'Creator':
-        const createdProjects = await Project.findAll({
-          where: {
-            creatorId: user.get('id')
-          },
-          include: [{
-            model: Task,
-            include: [{
-              model: Employee, as: 'developer'
-            }, {
-              model: Employee, as: 'creator'
-            }]
-          }, {
             model: Employee,
-            as: 'manager'
+            as: 'developer',
+            attributes: ['first_name', 'last_name', 'job']
           }]
-        });
-        user.setDataValue('createdProjects', createdProjects.map(project => project.get()));
-        req.user = user.get();
-        break;
-      default:
-        req.user = user.get();
-        break;
+        }, {
+          model: Employee,
+          as: 'manager',
+          attributes: ['first_name', 'last_name', 'job']
+        }]
+      }, {
+        model: Project,
+        as: 'assignedProjects',
+        include: [{
+          model: Task,
+          attributes: ['name', 'status', 'deadline'],
+          include: [{
+            model: Employee,
+            as: 'developer',
+            attributes: ['first_name', 'last_name', 'job']
+          }]
+        }, {
+          model: Employee,
+          as: 'manager',
+          attributes: ['first_name', 'last_name', 'job']
+        }]
+      }]
+    });
+
+    if (user.role === 'Developer') {
+      const projects = user.get('assignments').map(assignment => assignment.project);
+      user.setDataValue('projects', projects)
     }
+
+    deleteUnnecessaryFields(user, returnUnnecessaryFields(user.role));
+
+    req.user = user.get();
 
     next();
 
