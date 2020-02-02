@@ -3,6 +3,9 @@ const errorHandler = require('./middleware/error');
 const dotenv = require('dotenv');
 const db = require('./config/database');
 const cookieParser = require('cookie-parser');
+const CronJob = require('cron').CronJob;
+const { sendEmails } = require('./utils/mailOperations');
+
 
 // PORT
 const PORT = process.env.PORT || 5000;
@@ -42,6 +45,13 @@ app.use('/employees', employees);
 app.use('/tasks', tasks);
 app.use('/projects', projects);
 app.use('/auth', auth);
+
+
+const job = new CronJob('00 09 * * *', async function () {
+  console.log('09:00 EVERY DAY')
+  await sendEmails();
+}, null, true, 'Europe/Istanbul')
+
 
 // error handler middleware
 app.use(errorHandler);

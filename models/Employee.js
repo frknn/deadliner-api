@@ -34,9 +34,13 @@ const Employee = db.define('employee', {
 });
 
 Employee.addHook('beforeSave', async function (employee, options) {
-  const salt = await bcrypt.genSalt(10);
-  employee.password = await bcrypt.hash(employee.password, salt);
+  if (employee.changed('password')) {
+    const salt = await bcrypt.genSalt(10);
+    employee.password = await bcrypt.hash(employee.password, salt);
+  }
+
 })
+
 
 Employee.prototype.getSignedJwtToken = function () {
   return jwt.sign({ id: this.id }, process.env.JWT_SECRET, {
